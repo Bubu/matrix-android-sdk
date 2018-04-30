@@ -135,9 +135,6 @@ dependencies {
 
     implementation(name: 'olm-sdk', ext: 'aar')
 
-    // replace the compile 'io.pristine:libjingle:9690@aar'
-    implementation(name: 'react-native-webrtc', ext: 'aar')
-
     // Test
     testImplementation 'com.android.support.test:runner:1.0.2'
     testImplementation 'com.android.support.test:rules:1.0.2'

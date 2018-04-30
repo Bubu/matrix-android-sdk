@@ -162,7 +162,7 @@ public class MXCallsManager {
      * @return true if the call feature is supported
      */
     public boolean isSupported() {
-        return /*MXChromeCall.isSupported() || */ MXWebRtcCall.isSupported(mContext);
+        return false;
     }
 
     /**
@@ -174,10 +174,6 @@ public class MXCallsManager {
         /*if (MXChromeCall.isSupported()) {
             list.add(CallClass.CHROME_CLASS);
         }*/
-
-        if (MXWebRtcCall.isSupported(mContext)) {
-            list.add(CallClass.WEBRTC_CLASS);
-        }
 
         Log.d(LOG_TAG, "supportedClass " + list);
 
@@ -195,10 +191,6 @@ public class MXCallsManager {
         /*if (callClass == CallClass.CHROME_CLASS) {
             isUpdatable = MXChromeCall.isSupported();
         }*/
-
-        if (callClass == CallClass.WEBRTC_CLASS) {
-            isUpdatable = MXWebRtcCall.isSupported(mContext);
-        }
 
         if (isUpdatable) {
             mPreferredCallClass = callClass;
@@ -220,15 +212,6 @@ public class MXCallsManager {
         /*if (((CallClass.CHROME_CLASS == mPreferredCallClass) || (CallClass.DEFAULT_CLASS == mPreferredCallClass)) && MXChromeCall.isSupported()) {
             call = new MXChromeCall(mSession, mContext, getTurnServer());
         }*/
-
-        // webrtc
-        if (null == call) {
-            try {
-                call = new MXWebRtcCall(mSession, mContext, getTurnServer());
-            } catch (Exception e) {
-                Log.e(LOG_TAG, "createCall " + e.getMessage(), e);
-            }
-        }
 
         // a valid callid is provided
         if (null != callId) {
