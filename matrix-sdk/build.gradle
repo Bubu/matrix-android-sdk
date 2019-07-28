@@ -171,7 +171,7 @@ dependencies {
     implementation 'com.facebook.stetho:stetho-okhttp3:1.5.0'
 
     // olm lib is now hosted by jitpack: https://jitpack.io/#org.matrix.gitlab.matrix-org/olm
-    implementation 'com.github.Bubu:olm-mirror:3.1.2'
+    implementation 'org.matrix.gitlab.matrix-org:olm:3.1.2'
 
     // Database
     kapt 'dk.ilios:realmfieldnameshelper:1.1.1'
