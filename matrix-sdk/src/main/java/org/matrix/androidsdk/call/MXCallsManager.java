@@ -93,6 +93,8 @@ public class MXCallsManager {
     // UI handler
     private final Handler mUIThreadHandler;
 
+    public static String defaultStunServerUri;
+
     /**
      * To create an outgoing call
      * 1- CallsManager.createCallInRoom()
@@ -1057,7 +1059,7 @@ public class MXCallsManager {
                 }
             });
         } else {
-            room.invite(conferenceUserId, callback);
+            room.invite(mSession, conferenceUserId, callback);
         }
     }
 

@@ -99,12 +99,11 @@ class PartialSharedSessionTest {
         mTestHelper.await(latch)
 
         val aliceRoom = aliceSession.dataHandler
-                .store
-                .getRoom(roomId)
+                .store!!.getRoom(roomId)
 
 
         latch = CountDownLatch(1)
-        aliceRoom.invite(bobSession.myUserId, TestApiCallback<Void>(latch))
+        aliceRoom.invite(aliceSession, bobSession.myUserId, TestApiCallback<Void>(latch))
         mTestHelper.await(latch)
 
         latch = CountDownLatch(1)
@@ -140,7 +139,7 @@ class PartialSharedSessionTest {
 
         val aliceNewSession = mTestHelper.logIntoAccount(aliceSession.myUserId, defaultSessionParamsWithInitialSync)
 
-        val aliceRoomOtherSession = aliceNewSession.dataHandler.store.getRoom(aliceRoom.roomId)
+        val aliceRoomOtherSession = aliceNewSession.dataHandler.store!!.getRoom(aliceRoom.roomId)
 
         val aliceSecondSessionEvents = sentEvents.map {
             aliceRoomOtherSession.store.getEvent(it.eventId, aliceRoomOtherSession.roomId)

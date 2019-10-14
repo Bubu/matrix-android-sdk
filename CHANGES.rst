@@ -1,4 +1,48 @@
-Changes to Matrix Android SDK in 0.9.27 (2018-08-28)
+Changes to Matrix Android SDK in 0.9.30 (2019-10-09)
+=======================================================
+
+Bugfix:
+ - App won't start with some custom HS config #499
+
+Translations:
+ - Updated translations
+
+
+Changes to Matrix Android SDK in 0.9.29 (2019-10-04)
+=======================================================
+
+Corrective release
+
+Bugfix:
+ - Fix / Keysbackup not working (failed to get version)
+
+Changes to Matrix Android SDK in 0.9.28 (2019-10-03)
+=======================================================
+
+Improvements:
+ - Display correctly the revoked third-party invites.
+ - Support optional default STUN server when no ICE provided by HS
+ - Use wellknown to discover the IS of a HS (vector-im/riot-android#3283)
+ - Make identity server configurable
+ - Privacy: MSC2290 (#3300)
+
+API Change:
+ - `MXSession.openIdToken()` callback has a more typed parameter
+ - DefaultRetrofit2CallbackWrapper has been removed because it does not manage MatrixError. Use RestAdapterCallback instead.
+ - IMXEventListener.onAccountDataUpdated() method now has a parameter: the account data which has been updated.
+ - Third party identifiers (mail, phone) related calls (add/bind) are now delegated to the IdentityServerManager instead of
+   directly from MyUser. Now use mxSession.getIdentityManager().xxx
+ - Room#invite now requires the session (to delegate to correct identity server)
+
+Translations:
+ - Emoji verification name discrepancy between riot-web and riotX (vector-im/riotX-android#355)
+
+Others:
+ - Remove ParentRestClient from crypto module and use a common parent Rest Client (dinsic-pim/tchap-android#539)
+ - MXSession: Add doesServerRequireIdentityServerParam() and doesServerAcceptIdentityAccessToken() methods.
+ - Remove the bind true flag from 3PID calls on registration (vector-im/riot-android#3252)
+
+Changes to Matrix Android SDK in 0.9.27 (2019-08-28)
 =======================================================
 
 /!\ Security:

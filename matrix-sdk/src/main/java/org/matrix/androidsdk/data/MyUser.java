@@ -21,6 +21,7 @@ package org.matrix.androidsdk.data;
 import android.os.Handler;
 import android.os.Looper;
 
+import org.matrix.androidsdk.MXSession;
 import org.matrix.androidsdk.core.Log;
 import org.matrix.androidsdk.core.callback.ApiCallback;
 import org.matrix.androidsdk.core.callback.SimpleApiCallback;
@@ -99,48 +100,6 @@ public class MyUser extends User {
         });
     }
 
-    /**
-     * Request a validation token for an email address 3Pid
-     *
-     * @param pid      the pid to retrieve a token
-     * @param callback the callback when the operation is done
-     */
-    public void requestEmailValidationToken(ThreePid pid, ApiCallback<Void> callback) {
-        if (null != pid) {
-            pid.requestEmailValidationToken(mDataHandler.getProfileRestClient(), null, false, callback);
-        }
-    }
-
-    /**
-     * Request a validation token for a phone number 3Pid
-     *
-     * @param pid      the pid to retrieve a token
-     * @param callback the callback when the operation is done
-     */
-    public void requestPhoneNumberValidationToken(ThreePid pid, ApiCallback<Void> callback) {
-        if (null != pid) {
-            pid.requestPhoneNumberValidationToken(mDataHandler.getProfileRestClient(), false, callback);
-        }
-    }
-
-    /**
-     * Add a new pid to the account.
-     *
-     * @param pid      the pid to add.
-     * @param bind     true to add it.
-     * @param callback the async callback
-     */
-    public void add3Pid(final ThreePid pid, final boolean bind, final ApiCallback<Void> callback) {
-        if (null != pid) {
-            mDataHandler.getProfileRestClient().add3PID(pid, bind, new SimpleApiCallback<Void>(callback) {
-                @Override
-                public void onSuccess(Void info) {
-                    // refresh the third party identifiers lists
-                    refreshThirdPartyIdentifiers(callback);
-                }
-            });
-        }
-    }
 
     /**
      * Delete a 3pid from an account
@@ -160,21 +119,25 @@ public class MyUser extends User {
         }
     }
 
+
     /**
      * Build the lists of identifiers
      */
     private void buildIdentifiersLists() {
-        List<ThirdPartyIdentifier> identifiers = mDataHandler.getStore().thirdPartyIdentifiers();
         mEmailIdentifiers = new ArrayList<>();
         mPhoneNumberIdentifiers = new ArrayList<>();
-        for (ThirdPartyIdentifier identifier : identifiers) {
-            switch (identifier.medium) {
-                case ThreePid.MEDIUM_EMAIL:
-                    mEmailIdentifiers.add(identifier);
-                    break;
-                case ThreePid.MEDIUM_MSISDN:
-                    mPhoneNumberIdentifiers.add(identifier);
-                    break;
+        //NPE reported on playstore
+        if (mDataHandler.getStore() != null) {
+            List<ThirdPartyIdentifier> identifiers = mDataHandler.getStore().thirdPartyIdentifiers();
+            for (ThirdPartyIdentifier identifier : identifiers) {
+                switch (identifier.medium) {
+                    case ThreePid.MEDIUM_EMAIL:
+                        mEmailIdentifiers.add(identifier);
+                        break;
+                    case ThreePid.MEDIUM_MSISDN:
+                        mPhoneNumberIdentifiers.add(identifier);
+                        break;
+                }
             }
         }
     }
@@ -290,7 +253,7 @@ public class MyUser extends User {
      * Refresh the avatar url
      */
     private void refreshUserAvatarUrl() {
-        mDataHandler.getProfileRestClient().avatarUrl(user_id, new SimpleApiCallback<String>() {
+        mDataHandler.getProfileRestClient().avatarUrl(user_id, new ApiCallback<String>() {
             @Override
             public void onSuccess(String anAvatarUrl) {
                 if (mDataHandler.isAlive()) {
@@ -344,14 +307,16 @@ public class MyUser extends User {
      * Refresh the displayname.
      */
     private void refreshUserDisplayname() {
-        mDataHandler.getProfileRestClient().displayname(user_id, new SimpleApiCallback<String>() {
+        mDataHandler.getProfileRestClient().displayname(user_id, new ApiCallback<String>() {
             @Override
             public void onSuccess(String aDisplayname) {
                 if (mDataHandler.isAlive()) {
                     // local value
                     displayname = aDisplayname;
                     // store metadata
-                    mDataHandler.getStore().setDisplayName(aDisplayname, System.currentTimeMillis());
+                    if (mDataHandler.getStore() != null) {
+                        mDataHandler.getStore().setDisplayName(aDisplayname, System.currentTimeMillis());
+                    }
 
                     mIsDisplayNameRefreshed = true;
 
@@ -396,7 +361,7 @@ public class MyUser extends User {
      * Refresh the Third party identifiers i.e. the linked email to this account
      */
     public void refreshThirdPartyIdentifiers() {
-        mDataHandler.getProfileRestClient().threePIDs(new SimpleApiCallback<List<ThirdPartyIdentifier>>() {
+        mDataHandler.getProfileRestClient().threePIDs(new ApiCallback<List<ThirdPartyIdentifier>>() {
             @Override
             public void onSuccess(List<ThirdPartyIdentifier> identifiers) {
                 if (mDataHandler.isAlive()) {

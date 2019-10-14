@@ -167,4 +167,10 @@
     <string name="initial_sync_start_importing_account_data">Synchronisation initiale :
 \nImportation des données du compte</string>
 
-</resources>
+    <string name="notice_room_update">%s a mis à niveau ce salon.</string>
+
+    <string name="event_status_sending_message">Envoi du message…</string>
+    <string name="clear_timeline_send_queue">Vider la file d’envoi</string>
+
+<string name="notice_room_third_party_revoked_invite">%1$s a révoqué l’invitation pour %2$s à rejoindre le salon</string>
+    </resources>

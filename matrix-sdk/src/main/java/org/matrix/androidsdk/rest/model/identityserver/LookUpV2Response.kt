@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 New Vector Ltd
+ * Copyright 2019 New Vector Ltd
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,14 +14,15 @@
  * limitations under the License.
  */
 
-package org.matrix.androidsdk.crypto.interfaces
+package org.matrix.androidsdk.rest.model.identityserver
 
-import org.matrix.androidsdk.core.listeners.IMXNetworkEventListener
+import com.google.gson.annotations.SerializedName
 
-interface CryptoNetworkConnectivityReceiver {
-    fun isConnected(): Boolean
-
-    fun removeEventListener(mNetworkListener: IMXNetworkEventListener)
-
-    fun addEventListener(mNetworkListener: IMXNetworkEventListener)
-}
+/**
+ * Ref: https://github.com/matrix-org/matrix-doc/blob/hs/hash-identity/proposals/2134-identity-hash-lookup.md
+ */
+data class LookUpV2Response(
+        @JvmField
+        @SerializedName("mappings")
+        val mappings: Map<String, String>
+)

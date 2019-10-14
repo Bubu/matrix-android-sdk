@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 New Vector Ltd
+ * Copyright 2019 New Vector Ltd
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,11 +14,6 @@
  * limitations under the License.
  */
 
-package org.matrix.androidsdk.crypto.interfaces
+package org.matrix.androidsdk.features.identityserver
 
-interface CryptoCredentials {
-    fun getUserId(): String
-    fun getHomeServer(): String?
-    fun getAccessToken(): String?
-    fun getDeviceId(): String?
-}
+class IdentityServerV2ApiNotAvailable : Exception()
