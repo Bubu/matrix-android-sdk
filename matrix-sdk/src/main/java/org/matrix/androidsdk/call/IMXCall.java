@@ -23,9 +23,6 @@ import com.google.gson.JsonObject;
 import org.matrix.androidsdk.MXSession;
 import org.matrix.androidsdk.data.Room;
 import org.matrix.androidsdk.rest.model.Event;
-import org.webrtc.PeerConnection;
-
-import java.util.List;
 
 import javax.annotation.Nullable;
 
@@ -340,5 +337,4 @@ public interface IMXCall {
      */
     boolean isVideoRecordingMuted();
 
-    List<PeerConnection.IceServer> getIceServers();
 }
