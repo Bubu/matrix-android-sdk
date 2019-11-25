@@ -1,3 +1,28 @@
+Changes to Matrix Android SDK in 0.9.32 (2019-11-25)
+=======================================================
+
+Bugfix:
+ - Fix / Integration Manager was not allowed by default
+
+
+Changes to Matrix Android SDK in 0.9.31 (2019-11-22)
+=======================================================
+
+Features:
+ - Integrations / Manage Widget Permissions in Account Data
+
+Improvements:
+ - Integration Manager preferences are now managed by SDK
+ - Integrations / Manage Jitsi Domain Permissions in Account Data
+
+Bugfix:
+ - Crash on Realm crypto DB (vector-im/riot-android#3373)
+ - Match identity server registration to the IS r0.3.0 spec (#3382)
+
+API Change:
+ - /account/3pid/add requires user interactive Auth
+
+
 Changes to Matrix Android SDK in 0.9.30 (2019-10-09)
 =======================================================
 
