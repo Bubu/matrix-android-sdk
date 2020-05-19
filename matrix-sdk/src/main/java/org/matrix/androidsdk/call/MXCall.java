@@ -108,12 +108,12 @@ public class MXCall implements IMXCall {
     private boolean mIsConference = false;
 
     /**
-     * List of events to sends to mCallSignalingRoom
+     * List of events to send to mCallSignalingRoom
      */
     protected final List<Event> mPendingEvents = new ArrayList<>();
 
     /**
-     * The sending eevent.
+     * The sending event.
      */
     private Event mPendingEvent;
 
@@ -506,7 +506,7 @@ public class MXCall implements IMXCall {
      * @param newState the new state
      */
     protected void dispatchOnStateDidChange(String newState) {
-        Log.d(LOG_TAG, "## dispatchOnCallErrorOnStateDidChange(): " + newState);
+        Log.d(LOG_TAG, "## dispatchOnStateDidChange(): " + newState);
 
         // set the call start time
         if (TextUtils.equals(CALL_STATE_CONNECTED, newState) && (-1 == mStartTime)) {
@@ -569,67 +569,58 @@ public class MXCall implements IMXCall {
      * Send the next pending events
      */
     protected void sendNextEvent() {
-        mUIThreadHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                // do not send any new message
-                if (isCallEnded() && (null != mPendingEvents)) {
-                    mPendingEvents.clear();
-                }
+        mUIThreadHandler.post(() -> {
+            // do not send any new message
+            if (isCallEnded()) {
+                mPendingEvents.clear();
+            }
 
-                // ready to send
-                if ((null == mPendingEvent) && (0 != mPendingEvents.size())) {
-                    mPendingEvent = mPendingEvents.get(0);
-                    mPendingEvents.remove(mPendingEvent);
+            // ready to send
+            if ((null == mPendingEvent) && (0 != mPendingEvents.size())) {
+                mPendingEvent = mPendingEvents.get(0);
+                mPendingEvents.remove(mPendingEvent);
 
-                    Log.d(LOG_TAG, "## sendNextEvent() : sending event of type " + mPendingEvent.getType() + " event id " + mPendingEvent.eventId);
-                    mCallSignalingRoom.sendEvent(mPendingEvent, new ApiCallback<Void>() {
-                        @Override
-                        public void onSuccess(Void info) {
-                            mUIThreadHandler.post(new Runnable() {
-                                @Override
-                                public void run() {
-                                    Log.d(LOG_TAG, "## sendNextEvent() : event " + mPendingEvent.eventId + " is sent");
+                Log.d(LOG_TAG, "## sendNextEvent() : sending event of type " + mPendingEvent.getType() + " event id " + mPendingEvent.eventId);
+                mCallSignalingRoom.sendEvent(mPendingEvent, new ApiCallback<Void>() {
+                    @Override
+                    public void onSuccess(Void info) {
+                        mUIThreadHandler.post(() -> {
+                            Log.d(LOG_TAG, "## sendNextEvent() : event " + mPendingEvent.eventId + " is sent");
 
-                                    mPendingEvent = null;
-                                    sendNextEvent();
-                                }
+                            mPendingEvent = null;
+                            sendNextEvent();
+                        });
+                    }
+
+                    private void commonFailure(String reason) {
+                        Log.d(LOG_TAG, "## sendNextEvent() : event " + mPendingEvent.eventId + " failed to be sent " + reason);
+
+                        // let try next candidate event
+                        if (TextUtils.equals(mPendingEvent.getType(), Event.EVENT_TYPE_CALL_CANDIDATES)) {
+                            mUIThreadHandler.post(() -> {
+                                mPendingEvent = null;
+                                sendNextEvent();
                             });
+                        } else {
+                            hangup(reason);
                         }
+                    }
 
-                        private void commonFailure(String reason) {
-                            Log.d(LOG_TAG, "## sendNextEvent() : event " + mPendingEvent.eventId + " failed to be sent " + reason);
+                    @Override
+                    public void onNetworkError(Exception e) {
+                        commonFailure(e.getLocalizedMessage());
+                    }
 
-                            // let try next candidate event
-                            if (TextUtils.equals(mPendingEvent.getType(), Event.EVENT_TYPE_CALL_CANDIDATES)) {
-                                mUIThreadHandler.post(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        mPendingEvent = null;
-                                        sendNextEvent();
-                                    }
-                                });
-                            } else {
-                                hangup(reason);
-                            }
-                        }
+                    @Override
+                    public void onMatrixError(MatrixError e) {
+                        commonFailure(e.getLocalizedMessage());
+                    }
 
-                        @Override
-                        public void onNetworkError(Exception e) {
-                            commonFailure(e.getLocalizedMessage());
-                        }
-
-                        @Override
-                        public void onMatrixError(MatrixError e) {
-                            commonFailure(e.getLocalizedMessage());
-                        }
-
-                        @Override
-                        public void onUnexpectedError(Exception e) {
-                            commonFailure(e.getLocalizedMessage());
-                        }
-                    });
-                }
+                    @Override
+                    public void onUnexpectedError(Exception e) {
+                        commonFailure(e.getLocalizedMessage());
+                    }
+                });
             }
         });
     }
@@ -672,12 +663,7 @@ public class MXCall implements IMXCall {
         Event event = new Event(Event.EVENT_TYPE_CALL_HANGUP, hangupContent, mSession.getCredentials().userId, mCallSignalingRoom.getRoomId());
 
         // local notification to indicate the end of call
-        mUIThreadHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                dispatchOnCallEnd(END_CALL_REASON_USER_HIMSELF);
-            }
-        });
+        mUIThreadHandler.post(() -> dispatchOnCallEnd(END_CALL_REASON_USER_HIMSELF));
 
         Log.d(LOG_TAG, "## sendHangup(): reason=" + reason);
 

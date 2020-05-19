@@ -60,7 +60,6 @@ import org.matrix.androidsdk.data.store.IMXStore;
 import org.matrix.androidsdk.data.timeline.EventTimeline;
 import org.matrix.androidsdk.data.timeline.EventTimelineFactory;
 import org.matrix.androidsdk.db.MXMediaCache;
-import org.matrix.androidsdk.features.identityserver.IdentityServerManager;
 import org.matrix.androidsdk.listeners.IMXEventListener;
 import org.matrix.androidsdk.listeners.MXEventListener;
 import org.matrix.androidsdk.listeners.MXRoomEventListener;
@@ -72,6 +71,8 @@ import org.matrix.androidsdk.rest.model.PowerLevels;
 import org.matrix.androidsdk.rest.model.ReceiptData;
 import org.matrix.androidsdk.rest.model.RoomDirectoryVisibility;
 import org.matrix.androidsdk.rest.model.RoomMember;
+import org.matrix.androidsdk.rest.model.TaggedEventInfo;
+import org.matrix.androidsdk.rest.model.TaggedEventsContent;
 import org.matrix.androidsdk.rest.model.TokensChunkEvents;
 import org.matrix.androidsdk.rest.model.UserIdAndReason;
 import org.matrix.androidsdk.rest.model.message.FileInfo;
@@ -83,7 +84,6 @@ import org.matrix.androidsdk.rest.model.message.Message;
 import org.matrix.androidsdk.rest.model.message.ThumbnailInfo;
 import org.matrix.androidsdk.rest.model.message.VideoInfo;
 import org.matrix.androidsdk.rest.model.message.VideoMessage;
-import org.matrix.androidsdk.rest.model.sync.AccountDataElement;
 import org.matrix.androidsdk.rest.model.sync.InvitedRoomSync;
 import org.matrix.androidsdk.rest.model.sync.RoomResponse;
 import org.matrix.androidsdk.rest.model.sync.RoomSync;
@@ -93,10 +93,8 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Class representing a room and the interactions we have with it.
@@ -679,12 +677,12 @@ public class Room implements CryptoRoom {
      * @param thirdPartySignedUrl the thirdPartySigned url
      * @param callback            the callback
      */
-    public void joinWithThirdPartySigned(final String alias, final String thirdPartySignedUrl, final ApiCallback<Void> callback) {
+    public void joinWithThirdPartySigned(final MXSession session, final String alias, final String thirdPartySignedUrl, final ApiCallback<Void> callback) {
         if (null == thirdPartySignedUrl) {
             join(alias, callback);
         } else {
             String url = thirdPartySignedUrl + "&mxid=" + mMyUserId;
-            UrlPostTask task = new UrlPostTask();
+            UrlPostTask task = new UrlPostTask(session.getHomeServerConfig().getProxyConfig());
 
             task.setListener(new UrlPostTask.IPostTaskListener() {
                 @Override
@@ -1955,11 +1953,19 @@ public class Room implements CryptoRoom {
     private void handleRoomAccountDataEvents(List<Event> accountDataEvents) {
         if ((null != accountDataEvents) && (accountDataEvents.size() > 0)) {
             // manage the account events
-            for (Event accountDataEvent : accountDataEvents) {
-                String eventType = accountDataEvent.getType();
+            final RoomSummary summary = (null != getStore()) ? getStore().getSummary(getRoomId()) : null;
 
-                final RoomSummary summary = (null != getStore()) ? getStore().getSummary(getRoomId()) : null;
-                if (eventType.equals(Event.EVENT_TYPE_READ_MARKER)) {
+            for (Event accountDataEvent : accountDataEvents) {
+                mAccountData.handleEvent(accountDataEvent);
+
+                String eventType = accountDataEvent.getType();
+                if (eventType.equals(Event.EVENT_TYPE_TAGS)) {
+                    if (summary != null) {
+                        summary.setRoomTags(mAccountData.getRoomTagsKeys());
+                        getStore().flushSummary(summary);
+                    }
+                    mDataHandler.onRoomTagEvent(getRoomId());
+                } else if (eventType.equals(Event.EVENT_TYPE_READ_MARKER)) {
                     if (summary != null) {
                         final Event event = JsonUtils.toEvent(accountDataEvent.getContent());
                         if (null != event && !TextUtils.equals(event.eventId, summary.getReadMarkerEventId())) {
@@ -1972,28 +1978,8 @@ public class Room implements CryptoRoom {
                             mDataHandler.onReadMarkerEvent(getRoomId());
                         }
                     }
-                } else {
-                    mAccountData.handleTagEvent(accountDataEvent);
-                    if (Event.EVENT_TYPE_TAGS.equals(accountDataEvent.getType())) {
-                        if (summary != null) {
-                            summary.setRoomTags(mAccountData.getKeys());
-                            getStore().flushSummary(summary);
-                        }
-                        mDataHandler.onRoomTagEvent(getRoomId());
-                    } else if (Event.EVENT_TYPE_URL_PREVIEW.equals(accountDataEvent.getType())) {
-                        final JsonObject jsonObject = accountDataEvent.getContentAsJsonObject();
-                        if (jsonObject != null && jsonObject.has(AccountDataElement.ACCOUNT_DATA_KEY_URL_PREVIEW_DISABLE)) {
-                            final boolean disabled = jsonObject.get(AccountDataElement.ACCOUNT_DATA_KEY_URL_PREVIEW_DISABLE).getAsBoolean();
-                            Set<String> roomIdsWithoutURLPreview = mDataHandler.getStore().getRoomsWithoutURLPreviews();
-                            if (disabled) {
-                                roomIdsWithoutURLPreview.add(getRoomId());
-                            } else {
-                                roomIdsWithoutURLPreview.remove(getRoomId());
-                            }
-
-                            mDataHandler.getStore().setRoomsWithoutURLPreview(roomIdsWithoutURLPreview);
-                        }
-                    }
+                } else if (eventType.equals(Event.EVENT_TYPE_TAGGED_EVENTS)) {
+                    mDataHandler.onTaggedEventsEvent(getRoomId());
                 }
             }
 
@@ -2075,7 +2061,7 @@ public class Room implements CryptoRoom {
      * @return @return true if allowed.
      */
     public boolean isURLPreviewAllowedByUser() {
-        return !getDataHandler().getStore().getRoomsWithoutURLPreviews().contains(getRoomId());
+        return mAccountData.isURLPreviewAllowedByUser();
     }
 
     /**
@@ -2086,6 +2072,44 @@ public class Room implements CryptoRoom {
      */
     public void setIsURLPreviewAllowedByUser(boolean status, ApiCallback<Void> callback) {
         mDataHandler.getDataRetriever().getRoomsRestClient().updateURLPreviewStatus(mMyUserId, getRoomId(), status, callback);
+    }
+
+    //==============================================================================================================
+    // Tagged events
+    //==============================================================================================================
+
+    /**
+     * Tag an event of the room
+     *
+     * @param event    the event to tag
+     * @param tag      the wanted tag
+     * @param keywords the potential keywords
+     * @param callback the asynchronous callback
+     */
+    public void tagEvent(final Event event, String tag, @Nullable List<String> keywords, ApiCallback<Void> callback) {
+        final JsonObject eventContent = getAccountData().eventContent(Event.EVENT_TYPE_TAGGED_EVENTS);
+        final TaggedEventsContent taggedEventContent = JsonUtils.toTaggedEventsContent(eventContent);
+
+        TaggedEventInfo info = TaggedEventInfo.Companion.with(keywords, event.originServerTs, System.currentTimeMillis());
+        taggedEventContent.tagEvent(event.eventId, info, tag);
+
+        mDataHandler.getDataRetriever().getRoomsRestClient().updateTaggedEvents(mMyUserId, getRoomId(), taggedEventContent, callback);
+    }
+
+    /**
+     * Remove a tag applied on an event of the room
+     *
+     * @param event    the event to untag
+     * @param tag      the wanted tag
+     * @param callback the asynchronous callback
+     */
+    public void untagEvent(final Event event, String tag, ApiCallback<Void> callback) {
+        final JsonObject eventContent = getAccountData().eventContent(Event.EVENT_TYPE_TAGGED_EVENTS);
+        final TaggedEventsContent taggedEventContent = JsonUtils.toTaggedEventsContent(eventContent);
+
+        taggedEventContent.untagEvent(event.eventId, tag);
+
+        mDataHandler.getDataRetriever().getRoomsRestClient().updateTaggedEvents(mMyUserId, getRoomId(), taggedEventContent, callback);
     }
 
     //==============================================================================================================
@@ -2317,7 +2341,7 @@ public class Room implements CryptoRoom {
 
             if (Event.EVENT_TYPE_MESSAGE.equals(event.getType())) {
                 mDataHandler.getDataRetriever().getRoomsRestClient()
-                        .sendMessage(event.eventId, getRoomId(), JsonUtils.toMessage(event.getContent()), localCB);
+                        .sendMessage(event.eventId, getRoomId(), event.getContentAsJsonObject(), localCB);
             } else {
                 mDataHandler.getDataRetriever().getRoomsRestClient()
                         .sendEventToRoom(event.eventId, getRoomId(), event.getType(), event.getContentAsJsonObject(), localCB);
@@ -2431,7 +2455,7 @@ public class Room implements CryptoRoom {
      */
     public void invite(final MXSession session, List<String> identifiers, ApiCallback<Void> callback) {
         if (null != identifiers) {
-            session.getIdentityServerManager().inviteInRoom(this,identifiers.iterator(),callback);
+            session.getIdentityServerManager().inviteInRoom(this, identifiers.iterator(), callback);
         }
     }
 

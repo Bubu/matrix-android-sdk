@@ -18,9 +18,10 @@
 package org.matrix.androidsdk;
 
 import android.net.Uri;
+import android.text.TextUtils;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import android.text.TextUtils;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -29,6 +30,8 @@ import org.matrix.androidsdk.core.Log;
 import org.matrix.androidsdk.rest.model.login.Credentials;
 import org.matrix.androidsdk.ssl.Fingerprint;
 
+import java.net.InetSocketAddress;
+import java.net.Proxy;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -42,6 +45,9 @@ public class HomeServerConnectionConfig {
 
     // the home server URI
     private Uri mHomeServerUri;
+    // the jitsi server URI. Can be null
+    @Nullable
+    private Uri mJitsiServerUri;
     // the identity server URI. Can be null
     @Nullable
     private Uri mIdentityServerUri;
@@ -61,6 +67,11 @@ public class HomeServerConnectionConfig {
     private boolean mShouldAcceptTlsExtensions = true;
     // Force usage of TLS versions
     private boolean mForceUsageTlsVersions;
+    // the proxy hostname
+    private String mProxyHostname;
+    // the proxy port
+    private int mProxyPort = -1;
+
 
     /**
      * Private constructor. Please use the Builder
@@ -83,6 +94,13 @@ public class HomeServerConnectionConfig {
      */
     public Uri getHomeserverUri() {
         return mHomeServerUri;
+    }
+
+    /**
+     * @return the jitsi server uri
+     */
+    public Uri getJitsiServerUri() {
+        return mJitsiServerUri;
     }
 
     /**
@@ -155,12 +173,26 @@ public class HomeServerConnectionConfig {
                     mIdentityServerUri = Uri.parse(identityServerUrl);
                 }
             }
+
+            if (credentials.wellKnown.jitsiServer != null) {
+                String jitsiServerUrl = credentials.wellKnown.jitsiServer.preferredDomain;
+
+                if (!TextUtils.isEmpty(jitsiServerUrl)) {
+                    // add trailing "/"
+                    if (!jitsiServerUrl.endsWith("/")) {
+                        jitsiServerUrl =jitsiServerUrl + "/";
+                    }
+
+                    Log.d("setCredentials", "Overriding jitsi server url to " + jitsiServerUrl);
+                    mJitsiServerUri = Uri.parse(jitsiServerUrl);
+                }
+            }
         }
     }
 
     /**
      * @return whether we should reject X509 certs that were issued by trusts CAs and only trust
-     *         certs with matching fingerprints.
+     * certs with matching fingerprints.
      */
     public boolean shouldPin() {
         return mPin;
@@ -196,16 +228,34 @@ public class HomeServerConnectionConfig {
         return mForceUsageTlsVersions;
     }
 
+
+    /**
+     * @return proxy config if available
+     */
+    @Nullable
+    public Proxy getProxyConfig() {
+        if (mProxyHostname == null || mProxyHostname.length() == 0 || mProxyPort == -1) {
+            return null;
+        }
+
+        return new Proxy(Proxy.Type.HTTP,
+                new InetSocketAddress(mProxyHostname, mProxyPort));
+    }
+
+
     @Override
     public String toString() {
         return "HomeserverConnectionConfig{" +
                 "mHomeServerUri=" + mHomeServerUri +
+                ", mJitsiServerUri=" + mJitsiServerUri +
                 ", mIdentityServerUri=" + mIdentityServerUri +
                 ", mAntiVirusServerUri=" + mAntiVirusServerUri +
                 ", mAllowedFingerprints size=" + mAllowedFingerprints.size() +
                 ", mCredentials=" + mCredentials +
                 ", mPin=" + mPin +
                 ", mShouldAcceptTlsExtensions=" + mShouldAcceptTlsExtensions +
+                ", mProxyHostname=" + (null == mProxyHostname ? "" : mProxyHostname) +
+                ", mProxyPort=" + (-1 == mProxyPort ? "" : mProxyPort) +
                 ", mTlsVersions=" + (null == mTlsVersions ? "" : mTlsVersions.size()) +
                 ", mTlsCipherSuites=" + (null == mTlsCipherSuites ? "" : mTlsCipherSuites.size()) +
                 '}';
@@ -221,6 +271,10 @@ public class HomeServerConnectionConfig {
         JSONObject json = new JSONObject();
 
         json.put("home_server_url", mHomeServerUri.toString());
+        Uri jitsiServerUri = getJitsiServerUri();
+        if (jitsiServerUri != null) {
+            json.put("jitsi_server_url", jitsiServerUri.toString());
+        }
         Uri identityServerUri = getIdentityServerUri();
         if (identityServerUri != null) {
             json.put("identity_server_url", identityServerUri.toString());
@@ -267,6 +321,14 @@ public class HomeServerConnectionConfig {
             json.put("tls_cipher_suites", new JSONArray(tlsCipherSuites));
         }
 
+        if (mProxyPort != -1) {
+            json.put("proxy_port", mProxyPort);
+        }
+
+        if (mProxyHostname != null && mProxyHostname.length() > 0) {
+            json.put("proxy_hostname", mProxyHostname);
+        }
+
         return json;
     }
 
@@ -283,6 +345,7 @@ public class HomeServerConnectionConfig {
 
         Builder builder = new Builder()
                 .withHomeServerUri(Uri.parse(jsonObject.getString("home_server_url")))
+                .withJitsiServerUri(jsonObject.has("jitsi_server_url") ? Uri.parse(jsonObject.getString("jitsi_server_url")) : null)
                 .withIdentityServerUri(jsonObject.has("identity_server_url") ? Uri.parse(jsonObject.getString("identity_server_url")) : null)
                 .withCredentials(creds)
                 .withPin(jsonObject.optBoolean("pin", false));
@@ -321,6 +384,11 @@ public class HomeServerConnectionConfig {
                     builder.addAcceptedTlsCipherSuite(CipherSuite.forJavaName(tlsCipherSuitesArray.getString(i)));
                 }
             }
+        }
+
+        // Set the proxy options right if any
+        if (jsonObject.has("proxy_hostname") && jsonObject.has("proxy_port")) {
+            builder.withProxy(jsonObject.getString("proxy_hostname"), jsonObject.getInt("proxy_port"));
         }
 
         return builder.build();
@@ -370,6 +438,37 @@ public class HomeServerConnectionConfig {
                 }
             } else {
                 mHomeServerConnectionConfig.mHomeServerUri = homeServerUri;
+            }
+
+            return this;
+        }
+
+        /**
+         * @param jitsiServerUri The URI to use to manage identity. Can be null
+         * @return this builder
+         */
+        public Builder withJitsiServerUri(@Nullable final Uri jitsiServerUri) {
+            if (jitsiServerUri != null
+                    && !jitsiServerUri.toString().isEmpty()
+                    && !"http".equals(jitsiServerUri.getScheme())
+                    && !"https".equals(jitsiServerUri.getScheme())) {
+                throw new RuntimeException("Invalid jitsi server URI: " + jitsiServerUri);
+            }
+
+            // add trailing /
+            if ((null != jitsiServerUri) && !jitsiServerUri.toString().endsWith("/")) {
+                try {
+                    String url = jitsiServerUri.toString();
+                    mHomeServerConnectionConfig.mJitsiServerUri = Uri.parse(url + "/");
+                } catch (Exception e) {
+                    throw new RuntimeException("Invalid jitsi server URI: " + jitsiServerUri);
+                }
+            } else {
+                if (jitsiServerUri != null && jitsiServerUri.toString().isEmpty()) {
+                    mHomeServerConnectionConfig.mJitsiServerUri = null;
+                } else {
+                    mHomeServerConnectionConfig.mJitsiServerUri = jitsiServerUri;
+                }
             }
 
             return this;
@@ -546,6 +645,17 @@ public class HomeServerConnectionConfig {
                 }
             }
 
+            return this;
+        }
+
+        /**
+         * @param proxyHostname Proxy Hostname
+         * @param proxyPort     Proxy Port
+         * @return this builder
+         */
+        public Builder withProxy(@Nullable String proxyHostname, int proxyPort) {
+            mHomeServerConnectionConfig.mProxyHostname = proxyHostname;
+            mHomeServerConnectionConfig.mProxyPort = proxyPort;
             return this;
         }
 

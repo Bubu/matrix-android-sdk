@@ -38,7 +38,6 @@ import org.matrix.androidsdk.core.FileContentUtils;
 import org.matrix.androidsdk.core.FilterUtil;
 import org.matrix.androidsdk.core.JsonUtils;
 import org.matrix.androidsdk.core.Log;
-import org.matrix.androidsdk.core.PolymorphicRequestBodyConverter;
 import org.matrix.androidsdk.core.UnsentEventsManager;
 import org.matrix.androidsdk.core.VersionsUtilKt;
 import org.matrix.androidsdk.core.callback.ApiCallback;
@@ -375,7 +374,7 @@ public class MXSession implements CryptoSession {
 
         // return the default cache manager
         mLatestChatMessageCache = new MXLatestChatMessageCache(mCredentials.userId);
-        mMediaCache = new MXMediaCache(mContentManager, mNetworkConnectivityReceiver, mCredentials.userId, appContext);
+        mMediaCache = new MXMediaCache(hsConfig, mContentManager, mNetworkConnectivityReceiver, mCredentials.userId, appContext);
         mDataHandler.setMediaCache(mMediaCache);
 
         mMediaScanRestClient.setMxStore(mDataHandler.getStore());
@@ -1179,7 +1178,7 @@ public class MXSession implements CryptoSession {
      * Gracefully stop the event stream.
      */
     public void stopEventStream() {
-        if (null != mCallsManager) {
+        if (isVoipCallSupported()) {
             mCallsManager.stopTurnServerRefresh();
         }
 
@@ -1199,7 +1198,7 @@ public class MXSession implements CryptoSession {
     public void pauseEventStream() {
         checkIfAlive();
 
-        if (null != mCallsManager) {
+        if (isVoipCallSupported()) {
             mCallsManager.pauseTurnServerRefresh();
         }
 
@@ -1238,7 +1237,7 @@ public class MXSession implements CryptoSession {
             mNetworkConnectivityReceiver.checkNetworkConnection(mContext);
         }
 
-        if (null != mCallsManager) {
+        if (isVoipCallSupported()) {
             mCallsManager.unpauseTurnServerRefresh();
         }
 
@@ -1753,7 +1752,7 @@ public class MXSession implements CryptoSession {
         } else {
             final Collection<Room> rooms = mDataHandler.getStore().getRooms();
             for (Room room : rooms) {
-                if (!room.getAccountData().hasTags()) {
+                if (!room.getAccountData().hasRoomTags()) {
                     taggedRooms.add(room);
                 }
             }

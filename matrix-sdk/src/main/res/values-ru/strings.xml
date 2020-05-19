@@ -132,7 +132,7 @@
     <string name="verification_emoji_robot">Робот</string>
     <string name="verification_emoji_hat">Шляпа</string>
     <string name="verification_emoji_glasses">Очки</string>
-    <string name="verification_emoji_wrench">гаечный ключ</string>
+    <string name="verification_emoji_wrench">Гаечный ключ</string>
     <string name="verification_emoji_santa">Санта</string>
     <string name="verification_emoji_thumbsup">Большой палец вверх</string>
     <string name="verification_emoji_umbrella">Зонтик</string>
@@ -163,27 +163,8 @@
     <string name="verification_emoji_folder">Папка</string>
     <string name="verification_emoji_pin">Булавка</string>
 
-    <string name="initial_sync_start_importing_account">Начальная синхронизация:
-\nИмпорт учетной записи…</string>
-    <string name="initial_sync_start_importing_account_crypto">Начальная синхронизация:
-\nИмпорт криптографии</string>
-    <string name="initial_sync_start_importing_account_rooms">Начальная синхронизация:
-\nИмпорт комнат</string>
-    <string name="initial_sync_start_importing_account_joined_rooms">Синхронизация начата: 
-\nИмпорт присоединенных комнат</string>
-    <string name="initial_sync_start_importing_account_invited_rooms">Синхронизация начата: 
-\nИмпорт приглашенных комнат</string>
-    <string name="initial_sync_start_importing_account_left_rooms">Начальная синхронизация:
-\nИмпорт покинутых комнат</string>
-    <string name="initial_sync_start_importing_account_groups">Начальная синхронизация:
-\nИмпорт сообществ</string>
-    <string name="initial_sync_start_importing_account_data">Начальная синхронизация:
-\nИмпорт данных учетной записи</string>
-
     <string name="notice_room_update">%s обновил эту комнату.</string>
 
-    <string name="event_status_sending_message">Отправка сообщения…</string>
-    <string name="clear_timeline_send_queue">Очистить очередь отправки</string>
-
     <string name="notice_room_third_party_revoked_invite">%1$s отозвал приглашение %2$s присоединиться к комнате</string>
+
 </resources>
