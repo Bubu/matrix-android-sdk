@@ -1,4 +1,4 @@
-*
+/*
  * Copyright 2015 OpenMarket Ltd
  * Copyright 2017 Vector Creations Ltd
  * Copyright 2018 New Vector Ltd
